@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+ai_agent.log
+
+# Data files
+leads_data.json
+recordings/
+*.wav
+*.mp3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# Asterisk
+*.call
+*.pcap

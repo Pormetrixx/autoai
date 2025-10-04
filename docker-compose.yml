@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  asterisk-ai:
+    build: .
+    container_name: ai-call-center
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"    # SIP UDP
+      - "5060:5060/tcp"    # SIP TCP
+      - "8088:8088"        # ARI HTTP
+      - "8089:8089"        # WebSocket
+      - "10000-20000:10000-20000/udp"  # RTP
+    environment:
+      - ARI_URL=http://localhost:8088
+      - ARI_USERNAME=ai_agent
+      - ARI_PASSWORD=ai_agent_secure_password_123
+      - ARI_APP=ai-call-center
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+    volumes:
+      - ./leads_data.json:/app/leads_data.json
+      - ./ai_agent.log:/app/ai_agent.log
+      - asterisk_logs:/var/log/asterisk
+      - asterisk_spool:/var/spool/asterisk
+    networks:
+      - ai-network
+
+volumes:
+  asterisk_logs:
+  asterisk_spool:
+
+networks:
+  ai-network:
+    driver: bridge
