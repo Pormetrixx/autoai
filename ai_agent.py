@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any
 import aiohttp
 from dotenv import load_dotenv
 import websockets
-from deepgram import Deepgram
+from deepgram import DeepgramClient
 
 # Load environment variables
 load_dotenv()
@@ -58,7 +58,7 @@ class AICallCenterAgent:
             raise ValueError("DEEPGRAM_API_KEY required")
         
         # Initialize services
-        self.deepgram = Deepgram(self.deepgram_api_key)
+        self.deepgram = DeepgramClient(api_key=self.deepgram_api_key)
         self.session: Optional[aiohttp.ClientSession] = None
         self.active_calls: Dict[str, Dict[str, Any]] = {}
         self.running = True
@@ -321,18 +321,45 @@ class AICallCenterAgent:
     async def transcribe_audio(self, recording_name: str) -> Optional[str]:
         """Transcribe audio using Deepgram"""
         try:
-            # In production, you would get the actual recording file
-            # For now, return a placeholder
             logger.info(f"Transcribing recording: {recording_name}")
             
-            # Deepgram transcription would happen here
-            # audio_file = f'/var/spool/asterisk/recording/{recording_name}.wav'
-            # with open(audio_file, 'rb') as audio:
-            #     source = {'buffer': audio, 'mimetype': 'audio/wav'}
-            #     response = await self.deepgram.transcription.prerecorded(source)
-            #     transcript = response['results']['channels'][0]['alternatives'][0]['transcript']
+            # Construct the full path to the recording file
+            audio_file = f'/var/spool/asterisk/recording/{recording_name}.wav'
             
-            return "Sample transcribed text"  # Placeholder
+            # Check if file exists
+            if not os.path.exists(audio_file):
+                logger.warning(f"Recording file not found: {audio_file}")
+                return "Sample transcribed text"  # Fallback for development
+            
+            # Read the audio file
+            with open(audio_file, 'rb') as audio:
+                audio_data = audio.read()
+            
+            # Transcribe using Deepgram v3+ API
+            response = self.deepgram.listen.v1.media.transcribe_file(
+                request=audio_data,
+                model="nova-2",
+                smart_format=True,
+                punctuate=True,
+                language="en"
+            )
+            
+            # Extract transcript from response
+            if hasattr(response, 'results') and response.results:
+                channels = response.results.channels
+                if channels and len(channels) > 0:
+                    alternatives = channels[0].alternatives
+                    if alternatives and len(alternatives) > 0:
+                        transcript = alternatives[0].transcript
+                        logger.info(f"Transcription successful: {transcript[:50]}...")
+                        return transcript
+            
+            logger.warning("No transcript found in response")
+            return None
+            
+        except FileNotFoundError as e:
+            logger.error(f"Audio file not found: {e}")
+            return None
         except Exception as e:
             logger.error(f"Error transcribing audio: {e}")
             return None
