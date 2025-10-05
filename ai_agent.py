@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any
 import aiohttp
 from dotenv import load_dotenv
 import websockets
-from deepgram import Deepgram
+from deepgram import DeepgramClient
 
 # Load environment variables
 load_dotenv()
@@ -58,7 +58,7 @@ class AICallCenterAgent:
             raise ValueError("DEEPGRAM_API_KEY required")
         
         # Initialize services
-        self.deepgram = Deepgram(self.deepgram_api_key)
+        self.deepgram = DeepgramClient(self.deepgram_api_key)
         self.session: Optional[aiohttp.ClientSession] = None
         self.openai_session: Optional[aiohttp.ClientSession] = None
         self.active_calls: Dict[str, Dict[str, Any]] = {}
@@ -333,7 +333,7 @@ class AICallCenterAgent:
             # audio_file = f'/var/spool/asterisk/recording/{recording_name}.wav'
             # with open(audio_file, 'rb') as audio:
             #     source = {'buffer': audio, 'mimetype': 'audio/wav'}
-            #     response = await self.deepgram.transcription.prerecorded(source)
+            #     response = await self.deepgram.listen.prerecorded.v('1').transcribe_file(source)
             #     transcript = response['results']['channels'][0]['alternatives'][0]['transcript']
             
             return "Sample transcribed text"  # Placeholder
