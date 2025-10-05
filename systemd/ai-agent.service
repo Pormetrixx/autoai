@@ -1,0 +1,19 @@
+[Unit]
+Description=AI Call Center Agent
+After=network.target asterisk.service
+Requires=asterisk.service
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+WorkingDirectory=/home/ubuntu/autoai
+Environment="PATH=/home/ubuntu/autoai/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/ubuntu/autoai/venv/bin/python3 /home/ubuntu/autoai/ai_agent.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
