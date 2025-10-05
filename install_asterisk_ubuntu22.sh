@@ -63,7 +63,7 @@ apt-get install -y \
     libsnmp-dev \
     libcorosync-common-dev \
     libbluetooth-dev \
-    libradiusclient-ng-dev \
+    libradcli-dev \
     freetds-dev \
     libpq-dev \
     libresample1-dev \
@@ -87,64 +87,72 @@ apt-get install -y nodejs
 # Download and install PJSIP
 echo -e "${YELLOW}[4/8] Installing PJSIP...${NC}"
 cd /usr/src
-if [ ! -d "pjproject-2.13" ]; then
-    wget https://github.com/pjsip/pjproject/archive/refs/tags/2.13.tar.gz -O pjproject-2.13.tar.gz
-    tar -xzf pjproject-2.13.tar.gz
+
+# Check if PJSIP is already installed
+if pkg-config --exists libpjproject 2>/dev/null; then
+    echo -e "${GREEN}PJSIP is already installed, skipping...${NC}"
+else
+    if [ ! -d "pjproject-2.13" ]; then
+        wget https://github.com/pjsip/pjproject/archive/refs/tags/2.13.tar.gz -O pjproject-2.13.tar.gz
+        tar -xzf pjproject-2.13.tar.gz
+    fi
+    cd pjproject-2.13
+    ./configure --prefix=/usr --enable-shared --disable-video --disable-sound --disable-opencore-amr
+    make dep
+    make
+    make install
+    ldconfig
 fi
-cd pjproject-2.13
-./configure --prefix=/usr --libdir=/usr/lib64 --enable-shared --disable-video --disable-sound --disable-opencore-amr
-make dep
-make
-make install
-ldconfig
 
 # Download and install Asterisk
 echo -e "${YELLOW}[5/8] Downloading and installing Asterisk 20...${NC}"
 cd /usr/src
-ASTERISK_VERSION="20.10.0"
-if [ ! -d "asterisk-${ASTERISK_VERSION}" ]; then
-    wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-${ASTERISK_VERSION}.tar.gz
-    tar -xzf asterisk-${ASTERISK_VERSION}.tar.gz
+ASTERISK_VERSION="20.15.2"
+
+# Check if Asterisk is already installed
+if command -v asterisk &> /dev/null; then
+    INSTALLED_VERSION=$(asterisk -V 2>/dev/null | grep -oP 'Asterisk \K[0-9.]+' || echo "unknown")
+    echo -e "${GREEN}Asterisk ${INSTALLED_VERSION} is already installed, skipping installation...${NC}"
+else
+    if [ ! -d "asterisk-${ASTERISK_VERSION}" ]; then
+        wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-${ASTERISK_VERSION}.tar.gz
+        tar -xzf asterisk-${ASTERISK_VERSION}.tar.gz
+    fi
+    cd asterisk-${ASTERISK_VERSION}
+
+    # Install prerequisites
+    contrib/scripts/install_prereq install
+
+    # Configure Asterisk with all modules
+    echo -e "${YELLOW}[6/8] Configuring Asterisk with all modules...${NC}"
+    ./configure --with-jansson-bundled --with-pjproject-bundled
+
+    # Select all modules using menuselect
+    make menuselect.makeopts
+    # Enable all modules by default
+    menuselect/menuselect \
+        --enable-category MENUSELECT_ADDONS \
+        --enable-category MENUSELECT_APPS \
+        --enable-category MENUSELECT_BRIDGES \
+        --enable-category MENUSELECT_CDR \
+        --enable-category MENUSELECT_CEL \
+        --enable-category MENUSELECT_CHANNELS \
+        --enable-category MENUSELECT_CODECS \
+        --enable-category MENUSELECT_FORMATS \
+        --enable-category MENUSELECT_FUNCS \
+        --enable-category MENUSELECT_PBX \
+        --enable-category MENUSELECT_RES \
+        --enable-category MENUSELECT_TESTS \
+        --enable-category MENUSELECT_UTILS \
+        menuselect.makeopts
+
+    # Compile and install
+    echo -e "${YELLOW}[7/8] Compiling Asterisk (this may take 15-30 minutes)...${NC}"
+    make -j$(nproc)
+    make install
+    make samples
+    make config
 fi
-cd asterisk-${ASTERISK_VERSION}
-
-# Install prerequisites
-contrib/scripts/install_prereq install
-
-# Configure Asterisk with all modules
-echo -e "${YELLOW}[6/8] Configuring Asterisk with all modules...${NC}"
-./configure --with-jansson-bundled --with-pjproject-bundled
-
-# Select all modules using menuselect
-make menuselect.makeopts
-# Enable all modules by default
-menuselect/menuselect \
-    --enable-category MENUSELECT_ADDONS \
-    --enable-category MENUSELECT_APPS \
-    --enable-category MENUSELECT_BRIDGES \
-    --enable-category MENUSELECT_CDR \
-    --enable-category MENUSELECT_CEL \
-    --enable-category MENUSELECT_CHANNELS \
-    --enable-category MENUSELECT_CODECS \
-    --enable-category MENUSELECT_FORMATS \
-    --enable-category MENUSELECT_FUNCS \
-    --enable-category MENUSELECT_PBX \
-    --enable-category MENUSELECT_RES \
-    --enable-category MENUSELECT_TESTS \
-    --enable-category MENUSELECT_UTILS \
-    menuselect.makeopts
-
-# Compile and install
-echo -e "${YELLOW}[7/8] Compiling Asterisk (this may take 15-30 minutes)...${NC}"
-make -j$(nproc)
-make install
-make samples
-make config
-
-# Install Asterisk sound files
-echo -e "${YELLOW}Installing sound files...${NC}"
-make install-sounds-en-gsm
-make install-sounds-en-wav
 
 # Create Asterisk user
 if ! id -u asterisk > /dev/null 2>&1; then
