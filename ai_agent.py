@@ -60,6 +60,7 @@ class AICallCenterAgent:
         # Initialize services
         self.deepgram = DeepgramClient(api_key=self.deepgram_api_key)
         self.session: Optional[aiohttp.ClientSession] = None
+        self.openai_session: Optional[aiohttp.ClientSession] = None
         self.active_calls: Dict[str, Dict[str, Any]] = {}
         self.running = True
         
@@ -69,10 +70,13 @@ class AICallCenterAgent:
         """Start the AI agent"""
         logger.info("Starting AI Call Center Agent...")
         
-        # Create HTTP session
+        # Create HTTP session for ARI requests (with BasicAuth)
         self.session = aiohttp.ClientSession(
             auth=aiohttp.BasicAuth(self.ari_username, self.ari_password)
         )
+        
+        # Create separate HTTP session for OpenAI API requests (no auth in session)
+        self.openai_session = aiohttp.ClientSession()
         
         # Connect to ARI WebSocket
         ws_url = f"ws://localhost:8088/ari/events?app={self.ari_app}&api_key={self.ari_username}:{self.ari_password}"
@@ -233,7 +237,7 @@ class AICallCenterAgent:
                 'response_format': 'wav'
             }
             
-            async with self.session.post(
+            async with self.openai_session.post(
                 'https://api.openai.com/v1/audio/speech',
                 headers=headers,
                 json=payload
@@ -277,7 +281,7 @@ class AICallCenterAgent:
                     'maxDurationSeconds': 30,
                     'maxSilenceSeconds': 3,
                     'ifExists': 'overwrite',
-                    'beep': False,
+                    'beep': 'false',
                     'terminateOn': '#'
                 }
             )
@@ -404,7 +408,7 @@ class AICallCenterAgent:
                 'temperature': 0.7
             }
             
-            async with self.session.post(
+            async with self.openai_session.post(
                 'https://api.openai.com/v1/chat/completions',
                 headers=headers,
                 json=payload
@@ -554,9 +558,11 @@ class AICallCenterAgent:
             except:
                 pass
         
-        # Close session
+        # Close sessions
         if self.session:
             await self.session.close()
+        if self.openai_session:
+            await self.openai_session.close()
         
         logger.info("Cleanup complete")
     
