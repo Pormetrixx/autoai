@@ -63,7 +63,7 @@ apt-get install -y \
     libsnmp-dev \
     libcorosync-common-dev \
     libbluetooth-dev \
-    libradiusclient-ng-dev \
+    libradcli-dev \
     freetds-dev \
     libpq-dev \
     libresample1-dev \
@@ -92,7 +92,7 @@ if [ ! -d "pjproject-2.13" ]; then
     tar -xzf pjproject-2.13.tar.gz
 fi
 cd pjproject-2.13
-./configure --prefix=/usr --libdir=/usr/lib64 --enable-shared --disable-video --disable-sound --disable-opencore-amr
+./configure --prefix=/usr --enable-shared --disable-video --disable-sound --disable-opencore-amr
 make dep
 make
 make install
@@ -140,11 +140,6 @@ make -j$(nproc)
 make install
 make samples
 make config
-
-# Install Asterisk sound files
-echo -e "${YELLOW}Installing sound files...${NC}"
-make install-sounds-en-gsm
-make install-sounds-en-wav
 
 # Create Asterisk user
 if ! id -u asterisk > /dev/null 2>&1; then
